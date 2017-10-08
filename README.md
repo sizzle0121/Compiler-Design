@@ -1,5 +1,5 @@
 # Introduction to Compiler Design
-`Some simple project for practicing compiler design`  
+`Some simple projects for practicing compiler design`  
 
 ## [Project 1](https://github.com/sizzle0121/Compiler-Design/tree/master/project1)
 A scanner for P language.  
