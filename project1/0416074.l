@@ -1,8 +1,9 @@
+%Start COMMENT P_COMMENT
+
 %{
 # define LIST strcat (buf , yytext )
 # define token(s) { LIST ; if ( Opt_T ) printf ("<%s>\n", (s));}
 # define tokenKW(s) {LIST ; if( Opt_T ) printf("<KW%s>\n", (s));}
-//# define tokenChar(t) { LIST ; if ( Opt_T ) printf ("<%c>\n", (t));}
 # define tokenInteger(t, i) { LIST ; if ( Opt_T ) printf ("<%s: %d>\n", #t, (i));}
 # define tokenString(t, s) { LIST ; if ( Opt_T ) printf ("<%s: %s>\n", #t, (s));}
 # define MAX_LINE_LENG 256
@@ -11,6 +12,10 @@ int Opt_T = 1;
 int linenum = 1;
 char buf[ MAX_LINE_LENG ];
 char *t;
+
+//# define tokenChar(t) { LIST ; if ( Opt_T ) printf ("<%c>\n", (t));}
+//Maybe need to add unrecognized lexem
+
 %}
 
 keyword			array|begin|boolean|def|do|else|end|false|for|integer|if|of|print|read|real|string|then|to|true|return|var|while
@@ -30,42 +35,71 @@ scientific		({posfloat}|{posint})[E|e][+-]?{posint}
 string 			(\".*\")
 
 whitespace		[\40\t]
-comment			((\/\/).*|(\/\*.*\*\/))
+cpp_comment		((\/\/).*)			
 
+pseudocomment	((\/\/)&[SsTt][+-].*)
 
 %%
 
-{whitespace}	{ LIST; }
-{comment}		{ LIST; }
+{whitespace}			{ LIST; }
 
-{keyword}		{ tokenKW(yytext); }
+<COMMENT>\*\/			{ LIST; BEGIN(INITIAL);  }
+<COMMENT>.				{ LIST; /*printf(".\n");*/ }
+<INITIAL>\/\*			{ LIST; BEGIN(COMMENT); /*printf("* : %d\n", yyleng);*/  /*printf("/*\n");*/ }	
 
-{id}			{ tokenString(id,yytext); }
-
-{delimiter}		{ token(yytext); }
-
-{arithmetic}	{ token(yytext); }
-{relational}	{ token(yytext); }
-{logical}		{ token(yytext); }
-
-{integer}		{ tokenString(integer,yytext); }
-{oct_integer}	{ tokenString(oct_integer,yytext); }
-
-
-{float}			{ tokenString(float,yytext); }
-
-{scientific}	{ tokenString(scientific,yytext); }
-
-{string}		{
-	char newtext[256];
-	int i;
-	for(i=1; i<yyleng-1; i++){
-		newtext[i-1] = yytext[i];
-	}
-	newtext[i-1] = '\0';
-	tokenString(string,newtext);
+<INITIAL>{pseudocomment}	{ 
+		/*the order of S+- should be confirmed*/
+			LIST ;
+			if(yytext[3] == 'S' || yytext[3] == 's'){
+				if(yytext[4] == '+')		Opt_S = 1;
+				else if(yytext[4] == '-')	Opt_S = 0;
+			}else if(yytext[3] == 'T' || yytext[3] == 't'){
+				if(yytext[4] == '+')		Opt_T = 1;
+				else if(yytext[4] == '-')	Opt_T = 0;
+			}
 }
 
+<INITIAL>{cpp_comment}	{ LIST; }
+
+
+
+<INITIAL>{keyword}		{ tokenKW(yytext); }
+
+<INITIAL>{id}			{ tokenString(id,yytext); }
+
+<INITIAL>{delimiter}	{ token(yytext); }
+
+<INITIAL>{arithmetic}	{ token(yytext); }
+<INITIAL>{relational}	{ token(yytext); }
+<INITIAL>{logical}		{ token(yytext); }
+
+<INITIAL>{integer}		{ tokenString(integer,yytext); }
+<INITIAL>{oct_integer}	{ tokenString(oct_integer,yytext); }
+
+
+<INITIAL>{float}		{ tokenString(float,yytext); }
+
+<INITIAL>{scientific}	{ tokenString(scientific,yytext); }
+
+<INITIAL>{string}		{
+	char newtext[256];
+	for(int k=0; k<256; k++)
+		newtext[k] = '\0';
+
+	int i = 1, j = 0;
+	while(i < yyleng-1){
+		if(i != yyleng-2 && yytext[i] == '\"' && yytext[i+1] == '\"'){
+			i += 1;
+		}else if((yytext[i] == '\"' && yytext[i+1] != '\"') || (i == yyleng-2 && yytext[i] == '\"')){
+			/*error*/
+			fprintf(stderr, "Error at line %d: %s\n", linenum, yytext);
+			exit(0);
+		}
+		newtext[j++] = yytext[i++];
+	}
+	newtext[j] = '\0';
+	if(Opt_T)	tokenString(string,newtext);
+}
 
 
 \n 		{
@@ -74,9 +108,10 @@ comment			((\/\/).*|(\/\*.*\*\/))
 			printf ("%d: %s", linenum , buf );
 			linenum ++;
 			buf [0] = '\0';
-		}
+}
 
 
+	
 
 %%
 
@@ -92,5 +127,6 @@ int main ( int argc , char ** argv ){
 	}
 	yyin = fp;
 	yylex ();
-	exit (0);
+
+	return 0;
 }
