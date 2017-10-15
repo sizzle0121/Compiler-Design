@@ -15,7 +15,7 @@ char *t;
 
 //# define tokenChar(t) { LIST ; if ( Opt_T ) printf ("<%c>\n", (t));}
 //Maybe need to add unrecognized lexem
-
+//posfloat		({posint}\.{digit}+)
 %}
 
 keyword			array|begin|boolean|def|do|else|end|false|for|integer|if|of|print|read|real|string|then|to|true|return|var|while
@@ -30,8 +30,8 @@ oct_integer		(-?0{digit}+)
 integer 		(0|(-?[1-9]{digit}*))
 posint			([1-9]{digit}*)
 float			({integer}\.{digit}+)
-posfloat		({posint}\.{digit}+)
-scientific		({posfloat}|{posint})[E|e][+-]?{posint}
+
+scientific		({float}|{integer})[E|e][+-]?{posint}
 string 			(\".*\")
 
 whitespace		[\40\t]
@@ -92,7 +92,7 @@ pseudocomment	((\/\/)&[SsTt][+-].*)
 			i += 1;
 		}else if((yytext[i] == '\"' && yytext[i+1] != '\"') || (i == yyleng-2 && yytext[i] == '\"')){
 			/*error*/
-			fprintf(stderr, "Error at line %d: %s\n", linenum, yytext);
+			printf("error at line %d: bad character \"%s\"\n",linenum,yytext);
 			exit(0);
 		}
 		newtext[j++] = yytext[i++];
@@ -108,6 +108,11 @@ pseudocomment	((\/\/)&[SsTt][+-].*)
 			printf ("%d: %s", linenum , buf );
 			linenum ++;
 			buf [0] = '\0';
+}
+
+[\40-\176]		{
+	printf("error at line %d: bad character \"%s\"\n",linenum,yytext);
+	exit(0);
 }
 
 
