@@ -1,4 +1,4 @@
-%Start COMMENT P_COMMENT
+%Start COMMENT
 
 %{
 # define LIST strcat (buf , yytext )
@@ -26,8 +26,8 @@ delimiter		","|";"|":"|"("|")"|"["|"]"
 arithmetic		"+"|"-"|"*"|"/"|mod|":="
 relational		"<"|"<="|"<>"|">="|">"|"="
 logical			and|or|not
-oct_integer		(-?0{digit}+)
-integer 		(0|(-?[1-9]{digit}*))
+oct_integer		(0{digit}+)
+integer 		(0|([1-9]{digit}*))
 posint			([1-9]{digit}*)
 float			({integer}\.{digit}+)
 
