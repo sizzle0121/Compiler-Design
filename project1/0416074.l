@@ -4,7 +4,7 @@
 # define LIST strcat (buf , yytext )
 # define token(s) { LIST ; if ( Opt_T ) printf ("<%s>\n", (s));}
 # define tokenKW(s) {LIST ; if( Opt_T ) printf("<KW%s>\n", (s));}
-# define tokenInteger(t, i) { LIST ; if ( Opt_T ) printf ("<%s: %d>\n", #t, (i));}
+//# define tokenInteger(t, i) { LIST ; if ( Opt_T ) printf ("<%s: %d>\n", #t, (i));}
 # define tokenString(t, s) { LIST ; if ( Opt_T ) printf ("<%s: %s>\n", #t, (s));}
 # define MAX_LINE_LENG 256
 int Opt_S = 1;
@@ -16,6 +16,7 @@ char *t;
 //# define tokenChar(t) { LIST ; if ( Opt_T ) printf ("<%c>\n", (t));}
 //Maybe need to add unrecognized lexem
 //posfloat		({posint}\.{digit}+)
+//posint			([1-9]{digit}*)
 %}
 
 keyword			array|begin|boolean|def|do|else|end|false|for|integer|if|of|print|read|real|string|then|to|true|return|var|while
@@ -28,11 +29,12 @@ relational		"<"|"<="|"<>"|">="|">"|"="
 logical			and|or|not
 oct_integer		(0{digit}+)
 integer 		(0|([1-9]{digit}*))
-posint			([1-9]{digit}*)
-float			({integer}\.{digit}+)
+float			(0*{integer}\.{digit}+)
+scientific		({float}|(0*{integer}))[E|e][+-]?{integer}
 
-scientific		({float}|{integer})[E|e][+-]?{posint}
 string 			(\".*\")
+shortstring		(\"[^\"\n]*\")
+
 
 whitespace		[\40\t]
 cpp_comment		((\/\/).*)			
@@ -65,13 +67,15 @@ pseudocomment	((\/\/)&[SsTt][+-].*)
 
 <INITIAL>{keyword}		{ tokenKW(yytext); }
 
+<INITIAL>{arithmetic}	{ token(yytext); }
+<INITIAL>{relational}	{ token(yytext); }
+<INITIAL>{logical}		{ token(yytext); }
+
 <INITIAL>{id}			{ tokenString(id,yytext); }
 
 <INITIAL>{delimiter}	{ token(yytext); }
 
-<INITIAL>{arithmetic}	{ token(yytext); }
-<INITIAL>{relational}	{ token(yytext); }
-<INITIAL>{logical}		{ token(yytext); }
+
 
 <INITIAL>{integer}		{ tokenString(integer,yytext); }
 <INITIAL>{oct_integer}	{ tokenString(oct_integer,yytext); }
@@ -85,16 +89,30 @@ pseudocomment	((\/\/)&[SsTt][+-].*)
 	char newtext[256];
 	for(int k=0; k<256; k++)
 		newtext[k] = '\0';
-
+	int flag = 0;
 	int i = 1, j = 0;
 	while(i < yyleng-1){
 		if(i != yyleng-2 && yytext[i] == '\"' && yytext[i+1] == '\"'){
 			i += 1;
 		}else if((yytext[i] == '\"' && yytext[i+1] != '\"') || (i == yyleng-2 && yytext[i] == '\"')){
 			/*error*/
-			printf("error at line %d: bad character \"%s\"\n",linenum,yytext);
-			exit(0);
+			//printf("error at line %d: bad character \"%s\"\n",linenum,yytext);
+			//exit(0);
+			flag = 1;
+			REJECT;
 		}
+		newtext[j++] = yytext[i++];
+	}
+	newtext[j] = '\0';
+	if(Opt_T && flag == 0)	tokenString(string,newtext);
+}
+
+<INITIAL>{shortstring}	{
+	char newtext[256];
+	for(int k=0; k<256; k++)
+		newtext[k] = '\0';
+	int i=1, j=0;
+	while(i < yyleng-1){
 		newtext[j++] = yytext[i++];
 	}
 	newtext[j] = '\0';
@@ -102,10 +120,11 @@ pseudocomment	((\/\/)&[SsTt][+-].*)
 }
 
 
+
 \n 		{
 			LIST ;
 			if ( Opt_S )
-			printf ("%d: %s", linenum , buf );
+				printf ("%d: %s", linenum , buf );
 			linenum ++;
 			buf [0] = '\0';
 }
@@ -114,10 +133,6 @@ pseudocomment	((\/\/)&[SsTt][+-].*)
 	printf("error at line %d: bad character \"%s\"\n",linenum,yytext);
 	exit(0);
 }
-
-
-	
-
 %%
 
 int main ( int argc , char ** argv ){
